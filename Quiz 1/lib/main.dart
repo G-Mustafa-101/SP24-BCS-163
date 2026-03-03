@@ -1,14 +1,12 @@
 // Importing required libraries
-import 'dart:math'; // Used to generate random dice number
-import 'package:flutter/material.dart'; // Flutter UI library
-import 'package:share_plus/share_plus.dart'; // Used to share dice result
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
-// Main function - Starting point of the application
 void main() {
   runApp(const DiceApp());
 }
 
-// Root widget of the application
 class DiceApp extends StatelessWidget {
   const DiceApp({super.key});
 
@@ -18,7 +16,7 @@ class DiceApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Dice Roller',
       theme: ThemeData(
-        fontFamily: 'Roboto', // Clean font as required in assignment
+        fontFamily: 'Roboto',
         useMaterial3: true,
       ),
       home: const DiceHomePage(),
@@ -26,7 +24,6 @@ class DiceApp extends StatelessWidget {
   }
 }
 
-// Stateful widget because dice image will change dynamically using setState()
 class DiceHomePage extends StatefulWidget {
   const DiceHomePage({super.key});
 
@@ -35,35 +32,102 @@ class DiceHomePage extends StatefulWidget {
 }
 
 class _DiceHomePageState extends State<DiceHomePage> {
-
-  // Stores current dice number (1 to 6)
   int diceNumber = 1;
-
-  // Stores total number of rolls
   int totalRolls = 0;
 
-  // Stores last 5 rolls
   List<int> history = [];
-
-  // Stores complete roll history
   List<int> fullHistory = [];
 
-  // Function to roll dice and generate random number from 1 to 6
+  int? selectedNumber; // User chosen number (nullable initially)
+  double score = 0; // Score in $
+
+  // 🔹 Function to show number selection modal
+  void chooseNumber() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 12,
+          runSpacing: 12,
+          children: List.generate(6, (index) {
+            int num = index + 1;
+            bool isSelected = selectedNumber == num;
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  selectedNumber = num;
+                });
+                Navigator.pop(context);
+              },
+              child: Container(
+                width: 60,
+                height: 60,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.amber : Colors.blueAccent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      offset: Offset(0, 4),
+                    )
+                  ],
+                ),
+                child: Text(
+                  "$num",
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
   void rollDice() {
     setState(() {
-      diceNumber = Random().nextInt(6) + 1; // Random number between 1–6
+      diceNumber = Random().nextInt(6) + 1;
       totalRolls++;
 
-      // Adding latest roll to top of last 5 history list
+      // Update last 5 rolls
       history.insert(0, diceNumber);
       if (history.length > 5) history.removeLast();
 
-      // Adding roll to full history list
+      // Update full history
       fullHistory.add(diceNumber);
+
+      // 🔥 Bonus logic: $ only if guess matches dice
+      if (selectedNumber != null && diceNumber == selectedNumber) {
+        double bonus = diceNumber * 2;
+        score += bonus;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "🎉 Correct Guess! Bonus: \$${bonus.toStringAsFixed(2)}",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        score += diceNumber.toDouble();
+      }
     });
   }
 
-  // Function to show full roll history in dialog box
   void showFullHistory() {
     if (fullHistory.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -84,7 +148,7 @@ class _DiceHomePageState extends State<DiceHomePage> {
             itemBuilder: (context, index) {
               return ListTile(
                 leading: Image.asset(
-                  'assets/images/${fullHistory[index]}.png', // Dice images from assets/images/
+                  'assets/images/${fullHistory[index]}.png',
                   width: 30,
                 ),
                 title: Text("Roll ${index + 1}: ${fullHistory[index]}"),
@@ -101,13 +165,12 @@ class _DiceHomePageState extends State<DiceHomePage> {
     );
   }
 
-  // Function to reset all dice values and history
   void resetAll() {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Reset Dice?"),
-        content: const Text("Are you sure you want to reset all rolls?"),
+        content: const Text("Are you sure you want to reset all rolls and score?"),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context), child: const Text("No")),
@@ -118,6 +181,8 @@ class _DiceHomePageState extends State<DiceHomePage> {
                   totalRolls = 0;
                   history.clear();
                   fullHistory.clear();
+                  score = 0;
+                  selectedNumber = null;
                 });
                 Navigator.pop(context);
               },
@@ -127,18 +192,10 @@ class _DiceHomePageState extends State<DiceHomePage> {
     );
   }
 
-  // Function to share last roll or full roll history
   void shareResult({bool full = false}) {
-    if (full && fullHistory.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No rolls to share!")),
-      );
-      return;
-    }
-
     final text = full
-        ? "🎲 My Full Dice Rolls:\n${fullHistory.asMap().entries.map((e) => 'Roll ${e.key + 1}: ${e.value}').join('\n')}"
-        : "🎲 My Last Roll: $diceNumber";
+        ? "🎲 My Full Dice Rolls:\n${fullHistory.asMap().entries.map((e) => 'Roll ${e.key + 1}: ${e.value}').join('\n')}\n\nTotal Score: \$${score.toStringAsFixed(2)}"
+        : "🎲 My Last Roll: $diceNumber\nTotal Score: \$${score.toStringAsFixed(2)}";
 
     Share.share(text, subject: "Dice Roller Result");
   }
@@ -147,7 +204,6 @@ class _DiceHomePageState extends State<DiceHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        // Background gradient for simple responsive UI
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFF667eea), Color(0xFF764ba2)],
@@ -161,6 +217,7 @@ class _DiceHomePageState extends State<DiceHomePage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  const SizedBox(height: 10),
                   const Text(
                     "🎲 Dice Roller",
                     style: TextStyle(
@@ -168,38 +225,63 @@ class _DiceHomePageState extends State<DiceHomePage> {
                         fontWeight: FontWeight.bold,
                         color: Colors.white),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15),
 
-                  // Dice image that changes using setState()
+                  Text(
+                    "Score: \$${score.toStringAsFixed(2)}",
+                    style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.yellow),
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  // 🔹 User Choose Number Button
                   GestureDetector(
-                    onTap: rollDice,
+                    onTap: chooseNumber,
                     child: Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(25),
+                        color: Colors.blueAccent,
+                        borderRadius: BorderRadius.circular(12),
                         boxShadow: const [
                           BoxShadow(
                             color: Colors.black26,
-                            blurRadius: 10,
-                            offset: Offset(0, 5),
+                            blurRadius: 4,
+                            offset: Offset(0, 4),
                           )
                         ],
                       ),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: Image.asset(
-                          'assets/images/$diceNumber.png', // Dice images from assets/images/
-                          key: ValueKey(diceNumber),
-                          width: 140,
+                      child: Text(
+                        selectedNumber == null
+                            ? "Choose Your Number"
+                            : "Your Guess: $selectedNumber",
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 20),
 
-                  // Displaying rolled number
+                  GestureDetector(
+                    onTap: rollDice,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: Image.asset(
+                        'assets/images/$diceNumber.png',
+                        key: ValueKey(diceNumber),
+                        width: 140,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 15),
+
                   Text(
                     "You Rolled: $diceNumber",
                     style: const TextStyle(
@@ -210,7 +292,6 @@ class _DiceHomePageState extends State<DiceHomePage> {
 
                   const SizedBox(height: 10),
 
-                  // Tap to view total roll history
                   GestureDetector(
                     onTap: showFullHistory,
                     child: Text(
@@ -222,17 +303,6 @@ class _DiceHomePageState extends State<DiceHomePage> {
 
                   const SizedBox(height: 20),
 
-                  const Text(
-                    "Last 5 Rolls",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // Showing last 5 dice rolls
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: history
@@ -250,19 +320,16 @@ class _DiceHomePageState extends State<DiceHomePage> {
 
                   const SizedBox(height: 30),
 
-                  // Roll Dice Button
                   _buildGradientButton("🎲 Roll Dice", Colors.pinkAccent,
                       Colors.deepPurple, rollDice),
 
                   const SizedBox(height: 15),
 
-                  // Reset Button
                   _buildGradientButton(
                       "🧹 Reset All", Colors.orangeAccent, Colors.redAccent, resetAll),
 
                   const SizedBox(height: 15),
 
-                  // Share Button
                   _buildGradientButton("📤 Share Result", Colors.greenAccent,
                       Colors.teal, () {
                     showModalBottomSheet(
@@ -303,16 +370,12 @@ class _DiceHomePageState extends State<DiceHomePage> {
     );
   }
 
-  // Helper function to build gradient buttons
   Widget _buildGradientButton(
       String text, Color start, Color end, VoidCallback onPressed) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [start, end]),
         borderRadius: BorderRadius.circular(40),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))
-        ],
       ),
       child: ElevatedButton(
         onPressed: onPressed,
@@ -320,12 +383,15 @@ class _DiceHomePageState extends State<DiceHomePage> {
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(40)),
         ),
         child: Text(
           text,
           style: const TextStyle(
-              fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+              fontSize: 20,
+              color: Colors.white,
+              fontWeight: FontWeight.bold),
         ),
       ),
     );
