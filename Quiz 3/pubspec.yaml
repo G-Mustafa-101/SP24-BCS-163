@@ -1,0 +1,23 @@
+name: quiz_3_portal
+description: CSC303 Quiz 3 Submission Portal with Supabase integration.
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  supabase_flutter: ^2.6.0
+  google_fonts: ^6.2.1
+  intl: ^0.19.0
+  animate_do: ^3.3.4
+  lucide_icons: 0.257.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
